@@ -5,7 +5,7 @@ from threading import Thread
 import re
 import sys
 
-from audio_request_handler import AudioRequestHandler
+from speaker_request_handler import SpeakerRequestHandler
 from app_config import AppConfig
 from vpn_utils import VpnUtil
 from speaker_controller import SpeakerController
@@ -14,12 +14,13 @@ from logging_utils import setup_logging, get_logger, get_colored
 
 
 
-class WifiAudioHandler:
+class StreamAllAudioThroughWifiApp:
+
     def __init__(self, config_path):
         self.config = AppConfig(yaml_path=config_path)
         self.vpn_util = VpnUtil(config=self.config)
         self.speaker_controller = SpeakerController(config=self.config)
-        AudioRequestHandler.set_config(config=self.config)
+        SpeakerRequestHandler.set_config(config=self.config)
         
 
         self.on_step = 0
@@ -52,9 +53,12 @@ class WifiAudioHandler:
         self._logger.info("HiRes WiFi 播放系统 | %sHz / %sbit", self.config.SAMPLING.RATE, self.config.SAMPLING.WIDTH * 8)
         self._logger.info("协议: DLNA/UPnP")
 
-        source_display = getattr(self.config.SAMPLING, "SOURCE_REGEX", None) or getattr(self.config.SAMPLING, "SOURCE", None)
-        self._logger.info("系统播放设备请选择: %s", source_display)
-        self._logger.info("串流地址: %s", AudioRequestHandler.get_stream_url())
+        source_display = getattr(self.config.SAMPLING, "REQUIRED_SYSTEM_OUTPUT", None)
+        self._logger.info(
+            "系统播放设备请选择: %s", 
+            get_colored(source_display, self.config.LOGGING.COLORS.OUTPUT_DEVICE_HIGHLIGHT)
+        )
+        self._logger.info("串流地址: %s", SpeakerRequestHandler.get_stream_url())
         if self.config.VPN.TOGGLE_IF_FAILED:
             self._logger.info("VPN临时关闭: 已启用（任意环节失败时临时关闭，之后恢复）")
         self._logger.info("启动信息打印完毕\n")
@@ -73,7 +77,7 @@ class WifiAudioHandler:
             self._server_thread.join(timeout=2)
             self._server_thread = None
         
-        self._http_server = AudioRequestHandler.get_stream_server()
+        self._http_server = SpeakerRequestHandler.get_stream_server()
         self._http_server.allow_reuse_address = True
         self._server_thread = Thread(target=self._http_server.serve_forever, daemon=True)
         self._server_thread.start()
@@ -137,7 +141,7 @@ class WifiAudioHandler:
         try:
             self._target_device.AVTransport.SetAVTransportURI(
                 InstanceID=0,
-                CurrentURI=AudioRequestHandler.get_stream_url(),
+                CurrentURI=SpeakerRequestHandler.get_stream_url(),
                 CurrentURIMetaData=''
             )
             self._target_device.AVTransport.Play(InstanceID=0, Speed='1')
@@ -151,8 +155,11 @@ class WifiAudioHandler:
             else: #二次重启仍失败
                 self.cleanup_and_exit()
 
-        source_display = getattr(self.config.SAMPLING, "SOURCE_REGEX", None) or getattr(self.config.SAMPLING, "SOURCE", None)
-        self._logger.info("播放已启动！系统输出切到%s即可出声\n", source_display)
+        source_display = getattr(self.config.SAMPLING, "REQUIRED_SYSTEM_OUTPUT", None)
+        self._logger.info(
+            "播放已启动！系统输出切到 %s 即可出声\n", 
+            get_colored(source_display, self.config.LOGGING.COLORS.OUTPUT_DEVICE_HIGHLIGHT)
+        )
 
     def block_until_quit(self):
         """第6步：阻塞主进程直到用户退出"""
@@ -218,7 +225,7 @@ class WifiAudioHandler:
                 "\n由于第%s步失败，即将退出...", 
                 self.on_step
             )
-        AudioRequestHandler.is_running = False
+        SpeakerRequestHandler.is_running = False
         if self._http_server:
             self._http_server.shutdown()
         if self._vpn_resume_listener_stop_signal:
@@ -258,5 +265,5 @@ class WifiAudioHandler:
         
 
 if __name__ == "__main__":
-    wifi_music_handler = WifiAudioHandler("./configs/kef-lsx ii.yaml")
+    wifi_music_handler = StreamAllAudioThroughWifiApp("./configs/kef-lsx ii.yaml")
     wifi_music_handler.run()

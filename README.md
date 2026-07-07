@@ -1,155 +1,206 @@
-# Win11WifiStreamAllAudio
+# StreamAllAudioThroughWifi
 
-Win11WifiStreamAllAudio 是一个面向 Windows 11 的本地音频转发工具。它会从系统输出中捕获音频（默认通过 VB-Audio Virtual Cable），将其封装为流媒体并推送给局域网内的 DLNA/UPnP 音箱，实现“把电脑上的所有声音同步到音箱”的效果。
+## Overview
 
-## 项目目标
+`StreamAllAudioThroughWifi` is a Windows-only helper for streaming PC audio through a DLNA/UPnP speaker over WiFi.
+It captures audio from a virtual cable device, serves it as a live WAV stream, then pushes that stream to a network speaker while syncing the speaker volume with the Windows master volume.
 
-- 捕获 Windows 系统音频
-- 将音频流通过 HTTP 实时推送给音箱
-- 通过 DLNA/UPnP 控制音箱播放
-- 同步调整 Windows 主音量到音箱音量
-- 在异常时自动切换 VPN，提升连接可靠性
+## Features
 
-## 适用场景
+- Live audio capture from `VB-Audio Virtual Cable`
+- HTTP WAV streaming to DLNA/UPnP speakers
+- Automatic speaker discovery by name regex
+- Speaker power / volume control via Postman collection
+- Optional VPN toggling on failure to improve local discovery/connectivity
+- One-click Windows setup and launch scripts
 
-- 将电脑上的系统音频实时送到 KEF、Sonos 等支持 DLNA/UPnP 的音箱
-- 适合家庭影音、音乐播放、会议音频转发等场景
-- 当前配置示例以 KEF LSX II 为目标，使用 Postman 集合驱动控制命令
+## Getting Started
 
-## 项目结构
+### Prerequisites
 
-- main.py：主程序入口，负责启动整个流程
-- audio_request_handler.py：采集系统音频并提供 HTTP 流接口
-- audio_sampler.py：将浮点音频转为 PCM 二进制流
-- speaker_controller.py：通过 Postman 请求控制音箱开关、音量等
-- vpn_utils.py：执行 VPN 开关命令
-- app_config.py：加载 YAML 配置
-- configs/kef-lsx ii.yaml：当前示例配置文件
-- speaker_api/KEF-LSX II.postman_collection.json：KEF 音箱控制请求集合
-- others/：辅助脚本，如查看声卡、测试静态文件流等
-- tests/：自动化回归测试
+- Windows 10 / 11
+- Python 3.10+ installed
+- Administrator rights for VB-Cable installation
+- The speaker must support DLNA/UPnP and expose AVTransport control
 
-## 依赖要求
+### Setup
 
-- Windows 11
-- Python 3.10+（建议 3.11）
-- VB-Audio Virtual Cable（用于把系统音频转成可捕获输入）
-  - 官方下载地址：https://download.vb-audio.com/Download_CABLE/VBCABLE_Driver_Pack45.zip
-- 可用的 DLNA/UPnP 音箱
-- 可选：Tailscale 或其他 VPN 工具（配置中已支持自动切换）
+1. Open `setUp.bat` by double-clicking it.
+2. The script will:
+   - create a local virtual environment in `.venv`
+   - install dependencies from `requirements.txt`
+   - download and run the VB-Cable installer via `install_vbcable.py`
+3. If the VB-Cable installer prompts for admin permission, allow it.
 
-## 安装步骤
+> If setup fails, make sure Python is installed and `setUp.bat` is run from inside the project folder.
 
-1. 创建虚拟环境
+### Run
 
-```powershell
-python -m venv .venv
-.venv\Scripts\Activate.ps1
+1. After setup completes, double-click `runWifiMusic.bat`.
+2. The launcher activates the virtual environment and starts `main.py` with high process priority.
+3. The app will:
+   - start an HTTP audio stream on port `8000`
+   - discover matching DLNA speakers on the LAN
+   - bind Windows master volume changes to speaker volume
+   - keep running until you press `Ctrl+C` in the console or close the window
+
+## Configuration
+
+### Default config file
+
+The app loads `./configs/kef-lsx ii.yaml` by default from `main.py`.
+Update this YAML file to match your environment.
+
+### Key sections
+
+- `SAMPLING`
+  - `RATE`: audio sample rate (default `96000`)
+  - `WIDTH`: sample width in bytes (`3` means 24-bit PCM)
+  - `CHANNELS`: number of channels
+  - `FRAMES_PER_BUFFER`: buffer size for capture
+  - `REQUIRED_SYSTEM_OUTPUT`: Windows playback device that should be selected as the system default output
+  - `SOURCE_REGEX`: regex used to resolve the virtual audio input device
+
+- `STREAM`
+  - `PORT`: HTTP port used by the live audio stream
+
+- `SPEAKER`
+  - `NAME_REGEX`: regex used to match the target speaker friendly name
+  - `COMMAND.POSTMAN_COLLECTION`: Postman JSON file used to send speaker control requests
+  - `COMMAND.POWER`: speaker power-on/off command sequences
+  - `COMMAND.VOLUME`: speaker get/set volume sequences
+
+- `VPN`
+  - `TOGGLE_IF_FAILED`: if `true`, the app will temporarily disable VPN and retry when discovery or playback fails
+  - `COMMAND.DOWN` / `COMMAND.UP`: shell commands used to toggle VPN
+
+## Architecture
+
+The main workflow is:
+
+1. Load YAML config
+2. Start `SpeakerRequestHandler` HTTP streaming server
+3. Discover DLNA/UPnP speakers using `upnpclient`
+4. Select the matched speaker
+5. Use the speaker's Postman API collection to power on the device and control volume
+6. Continuously read Windows master volume and push updates to the speaker
+
+```mermaid
+
+flowchart TB
+    subgraph PC
+        app1[app 1]
+        app2[app 2]
+        app3[app 3]
+        subgraph OS
+            sys_default_op@{ shape: notch-rect, label: "system default output" }
+            sys_network@{ shape: notch-rect, label: "system network" }
+
+        end
+        subgraph vb_cable
+            vb_in["CABLE Input (VB-Audio Virtual Cable)"]
+            vb_out["CABLE Output (VB-Audio Virtual Cable)"]
+
+            vb_in e4@=="processed"==> vb_out
+        end
+        subgraph StreamAllAudioThroughWifiApp
+
+            Main@{ shape: subproc, label: "AppMain" }
+            subgraph sample_and_stream
+                AudioSampler["AudioSampler"]
+                SpeakerRequestHandler["SpeakerRequestHandler"]
+
+                AudioSampler e5@=="write to"==> SpeakerRequestHandler
+            end
+            subgraph volume_controll
+                get_vol_fn["get_vol_fn()"]
+                SpeakerController["SpeakerController"]
+
+                get_vol_fn --> SpeakerController
+            end
+            VpnUtil["VpnUtil"]
+            p_api_collection@{ shape: docs, label: "postman_api_collection\n.json" }
+            app_config@{ shape: docs, label: "app config\n.yaml" }
+
+            Main o--"host"--o sample_and_stream
+            Main o--"host"--o volume_controll
+            Main =="trigger if connection fail"==> VpnUtil
+            p_api_collection --> Main
+            %%SpeakerController
+            app_config --> Main
+        end
+    end
+    subgraph Speaker
+        controll_api["controll api"]
+        request_maker["request maker"]
+    end
+
+    app1 e1@=="audio"==> sys_default_op
+    app2 e2@=="audio"==> sys_default_op
+    app3 e3@=="audio"==> sys_default_op
+    sys_default_op --volume--> get_vol_fn
+    sys_default_op e8@=="mixed audio"==> vb_in
+    vb_out e9@=="sample"==> AudioSampler
+    SpeakerRequestHandler e6@=="data"==> sys_network
+    sys_network e7@=="data"==> request_maker 
+    SpeakerController <--"getVol\nsetVol\non/off"--> sys_network
+    sys_network <--"getVol/setVol/on/off"--> controll_api
+    VpnUtil ==> sys_network
+
+    classDef animate stroke-dasharray: 9,5,stroke-dashoffset: 900,animation: dash 25s linear infinite;
+    class e1,e2,e3,e4,e5,e6,e7,e8,e9,e10,e11 animate
+
 ```
 
-2. 安装依赖
+### Important components
+
+- `main.py`: orchestrates startup, discovery, streaming, and cleanup
+- `speaker_request_handler.py`: captures audio from the virtual cable and serves a continuous WAV stream
+- `speaker_controller.py`: executes speaker control requests using a Postman collection
+- `app_config.py`: loads YAML config while preserving `on/off` strings as strings
+- `function_utils.py`: reads Windows master volume and provides helper utilities
+- `vpn_utils.py`: toggles VPN when needed
+- `install_vbcable.py`: downloads and runs the VB-Cable installer
+
+## Dependencies
+
+Managed by `requirements.txt`:
+
+- `PyYAML` – YAML config parsing
+- `numpy` – audio sample conversion
+- `SoundCard` – Windows audio capture
+- `upnpclient` – DLNA/UPnP discovery
+- `python-postman[execution]` – execute Postman requests
+- `comtypes`, `pycaw` – Windows audio volume control
+
+## Troubleshooting
+
+- If audio stream cannot start, confirm `VB-Audio Virtual Cable` is installed and the Windows default output is set to `CABLE Input (VB-Audio Virtual Cable)`.
+- If speaker discovery fails, verify `SPEAKER.NAME_REGEX` matches the speaker name returned by UPnP discovery.
+- If `VPN.TOGGLE_IF_FAILED` is enabled, ensure the `COMMAND.DOWN` / `COMMAND.UP` commands work in your environment.
+- If `speaker_api/KEF-LSX II.postman_collection.json` does not match your speaker API, update it or provide a compatible collection and YAML command mapping.
+
+## Manual commands
+
+From the project root:
 
 ```powershell
-pip install -r requirements.txt
-```
-
-3. 配置音频源和音箱
-
-编辑配置文件：
-
-```text
-configs/kef-lsx ii.yaml
-```
-
-你需要重点确认以下配置：
-
-- SAMPLING.SOURCE_REGEX：匹配你实际安装的虚拟音频输入设备名称
-- SPEAKER.NAME_REGEX：匹配局域网中的音箱名称
-- SPEAKER.COMMAND.POSTMAN_COLLECTION：对应音箱控制请求集合文件
-- VPN.COMMAND：根据你本机的 VPN 工具路径进行配置
-
-## 运行方式
-
-### 方式一：使用批处理脚本
-
-```powershell
-runWifiMusic.bat
-```
-
-### 方式二：直接运行 Python
-
-```powershell
+.venv\Scripts\activate.bat
+python -m pip install -r requirements.txt
+python install_vbcable.py
 python main.py
 ```
 
-## 使用流程
+## Tests
 
-程序启动后会依次执行：
+Run the included unit tests with:
 
-1. 读取配置文件
-2. 启动 HTTP 音频流服务
-3. 搜索局域网中的 DLNA/UPnP 音箱
-4. 连接音箱控制接口
-5. 推送实时音频流并开始播放
-6. 持续同步系统音量到音箱
-
-## 关键配置说明
-
-### 音频采集
-
-```yaml
-SAMPLING:
-  RATE: 96000
-  WIDTH: 3
-  CHANNELS: 2
-  FRAMES_PER_BUFFER: 2048
-  SOURCE_REGEX: ^CABLE Output \(VB-Audio Virtual Cable\)$
+```powershell
+python -m unittest tests/test_audio_request_handler.py
 ```
 
-这里的 `SOURCE_REGEX` 会根据当前系统中存在的录音设备自动匹配目标输入源。只要你的系统中有对应的虚拟音频设备名称，程序就会使用它进行采集。
+## Notes
 
-### 音箱控制
-
-```yaml
-SPEAKER:
-  NAME_REGEX: LSX
-  COMMAND:
-    POSTMAN_COLLECTION: "./speaker_api/KEF-LSX II.postman_collection.json"
-```
-
-当前示例配置面向 KEF LSX II 的控制接口，使用 Postman 集合中的请求来完成开机、待机、音量获取和设置。
-
-## 常见问题
-
-### 1. 没有找到音箱
-
-检查以下内容：
-
-- `SPEAKER.NAME_REGEX` 是否匹配到你的音箱名称
-- 音箱是否和电脑处于同一局域网
-- 音箱是否支持 UPnP/DLNA 控制
-
-### 2. 没有声音
-
-检查以下内容：
-
-- `SAMPLING.SOURCE_REGEX` 是否正确匹配到 VB-Audio Virtual Cable
-- 系统输出是否已经切到对应虚拟音频设备
-- 是否已经安装并启用了 VB-Audio Virtual Cable
-
-### 3. Postman 请求失败
-
-检查：
-
-- `speaker_api/KEF-LSX II.postman_collection.json` 是否存在
-- 请求名称是否与当前配置中的 `NAME` 字段一致
-- 网络环境是否允许访问音箱控制接口
-
-## 辅助脚本
-
-- others/view_soundcards.py：查看当前系统中的录音设备
-- others/static_file_test.py：用于测试静态文件流和 DLNA 播放逻辑
-
-## 备注
-
-此项目当前以 Windows 11 本机环境为主，依赖系统级音频设备和音箱控制能力。若你要适配其他音箱或不同音频设备，需要修改配置文件和相应的控制集合。
+- This project is designed for Windows and assumes the speaker is controllable via HTTP API/UPnP.
+- The app currently uses a hard-coded default config file `configs/kef-lsx ii.yaml`.
+- Customize `configs/*.yaml` and `speaker_api/*.postman_collection.json` to support other speaker models.

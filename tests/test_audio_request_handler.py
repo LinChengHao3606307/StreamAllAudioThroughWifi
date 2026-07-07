@@ -2,10 +2,10 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from audio_request_handler import AudioRequestHandler
+from speaker_request_handler import SpeakerRequestHandler
 
 
-class AudioRequestHandlerTests(unittest.TestCase):
+class SpeakerRequestHandlerTests(unittest.TestCase):
     def test_resolve_virtual_audio_device_by_regex(self):
         with patch("audio_request_handler.sc", create=True) as mock_sc:
             mock_sc.all_microphones.return_value = [
@@ -16,7 +16,7 @@ class AudioRequestHandlerTests(unittest.TestCase):
                 SAMPLING=SimpleNamespace(SOURCE_REGEX=r"^CABLE Output \(VB-Audio Virtual Cable\)$")
             )
 
-            resolved = AudioRequestHandler.resolve_virtual_audio_device(config)
+            resolved = SpeakerRequestHandler.resolve_virtual_audio_device(config)
 
             self.assertEqual(resolved, "CABLE Output (VB-Audio Virtual Cable)")
 
@@ -29,7 +29,7 @@ class AudioRequestHandlerTests(unittest.TestCase):
                 SAMPLING=SimpleNamespace(SOURCE="USB Audio")
             )
 
-            resolved = AudioRequestHandler.resolve_virtual_audio_device(config)
+            resolved = SpeakerRequestHandler.resolve_virtual_audio_device(config)
 
             self.assertEqual(resolved, "USB Audio")
 

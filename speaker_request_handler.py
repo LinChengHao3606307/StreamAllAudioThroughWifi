@@ -17,7 +17,7 @@ from app_config import AppConfig
 logger = get_logger("audio_request_handler")
 
 
-class AudioRequestHandler(BaseHTTPRequestHandler):
+class SpeakerRequestHandler(BaseHTTPRequestHandler):
     # 类级别的默认配置（所有实例共享）
     _VIRTUAL_AUDIO_DEVICE = None
     _SAMPLE_RATE = None
@@ -48,7 +48,7 @@ class AudioRequestHandler(BaseHTTPRequestHandler):
     
     @classmethod
     def get_stream_server(cls):
-        return HTTPServer(("0.0.0.0", cls._STREAM_PORT), AudioRequestHandler)
+        return HTTPServer(("0.0.0.0", cls._STREAM_PORT), SpeakerRequestHandler)
     
     @classmethod
     def resolve_virtual_audio_device(cls, config: AppConfig):

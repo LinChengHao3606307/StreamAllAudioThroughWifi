@@ -3,4 +3,4 @@ __pycache__/
 *.pyc
 .vscode/
 *.log
-./others/vbcable/
+others/vbcable/
