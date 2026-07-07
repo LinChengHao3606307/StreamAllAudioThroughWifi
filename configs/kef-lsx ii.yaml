@@ -61,7 +61,7 @@ LOGGING:
 
 # ================= VPN 配置 =================
 VPN:
-  TOGGLE_IF_FAILED: true         # 设为 true 启用 任意环节失败时临时关闭VPN重试 功能
+  TOGGLE_IF_FAILED: false         # 设为 true 启用 任意环节失败时临时关闭VPN重试 功能
   COMMAND:
     DOWN: '"C:\Program Files\Tailscale\tailscale.exe" set --exit-node=""' # VPN 关闭命令
     UP: '"C:\Program Files\Tailscale\tailscale.exe" set --exit-node="hong-kong-forwarding-node"' # VPN 恢复命令
