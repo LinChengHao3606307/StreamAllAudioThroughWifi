@@ -4,7 +4,8 @@ SAMPLING:
   WIDTH : 3
   CHANNELS: 2
   FRAMES_PER_BUFFER: 2048
-  SOURCE_REGEX: ^CABLE Output \(VB-Audio Virtual Cable\)$
+  SOURCE_REGEX: ^CABLE Output \(VB-Audio Virtual Cable\)$ #适合选择 CABLE Input (VB-Audio Virtual Cable) 作为系统输出的场景
+
 STREAM:
   PORT: 8000
 # ================= 音箱配置 =================
