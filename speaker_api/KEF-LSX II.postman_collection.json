@@ -1,0 +1,182 @@
+{
+  "info": {
+    "_postman_id": "530b56aa-1a23-4832-a3d0-ad7c0a2985e6",
+    "name": "KEF-LSX II",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "55689763",
+    "_collection_link": "https://go.postman.co/collection/55689763-530b56aa-1a23-4832-a3d0-ad7c0a2985e6?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "get volume",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://{{speakerIp}}/api/getData?path=player:volume&roles=value",
+          "protocol": "http",
+          "host": [
+            "{{speakerIp}}"
+          ],
+          "path": [
+            "api",
+            "getData"
+          ],
+          "query": [
+            {
+              "key": "path",
+              "value": "player:volume"
+            },
+            {
+              "key": "roles",
+              "value": "value"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "set volume",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"path\":\"player:volume\",\r\n    \"roles\":\"value\",\r\n    \"value\":{\r\n        \"type\":\"i32_\",\r\n        \"i32_\":{{volumeVal}}\r\n    }\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://{{speakerIp}}/api/setData",
+          "protocol": "http",
+          "host": [
+            "{{speakerIp}}"
+          ],
+          "path": [
+            "api",
+            "setData"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "switch on",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"path\": \"settings:/kef/play/physicalSource\",\r\n    \"roles\": \"value\",\r\n    \"value\": {\r\n        \"type\": \"kefPhysicalSource\", \r\n        \"kefPhysicalSource\": \"powerOn\"\r\n    }\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://{{speakerIp}}/api/setData",
+          "protocol": "http",
+          "host": [
+            "{{speakerIp}}"
+          ],
+          "path": [
+            "api",
+            "setData"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "set speaker to stand by",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"path\": \"settings:/kef/play/physicalSource\",\r\n    \"roles\": \"value\",\r\n    \"value\": {\r\n        \"type\": \"kefPhysicalSource\", \r\n        \"kefPhysicalSource\": \"standby\"\r\n    }\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://{{speakerIp}}/api/setData",
+          "protocol": "http",
+          "host": [
+            "{{speakerIp}}"
+          ],
+          "path": [
+            "api",
+            "setData"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "get status",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://{{speakerIp}}/api/getData?path=settings:/kef/host/speakerStatus&roles=value",
+          "protocol": "http",
+          "host": [
+            "{{speakerIp}}"
+          ],
+          "path": [
+            "api",
+            "getData"
+          ],
+          "query": [
+            {
+              "key": "path",
+              "value": "settings:/kef/host/speakerStatus"
+            },
+            {
+              "key": "roles",
+              "value": "value"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "set source to wifi",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"path\": \"settings:/kef/play/physicalSource\",\r\n    \"roles\": \"value\",\r\n    \"value\": {\r\n        \"type\": \"kefPhysicalSource\", \r\n        \"kefPhysicalSource\": \"wifi\"\r\n    }\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://{{speakerIp}}/api/setData",
+          "protocol": "http",
+          "host": [
+            "{{speakerIp}}"
+          ],
+          "path": [
+            "api",
+            "setData"
+          ]
+        },
+        "description": "wifi, bluetooth, tv, optic, coaxial or analogEndFragment"
+      },
+      "response": []
+    }
+  ]
+}
