@@ -89,28 +89,26 @@ The main workflow is:
 
 flowchart TB
     subgraph PC
-        app1[app 1]
-        app2[app 2]
-        app3[app 3]
+        app1@{ shape: circle, label: "app 1" }
+        app2@{ shape: circle, label: "app 2" }
+        app3@{ shape: circle, label: "app 3" }
         subgraph OS
             sys_default_op@{ shape: notch-rect, label: "system default output" }
             sys_network@{ shape: notch-rect, label: "system network" }
-
         end
         subgraph vb_cable
             vb_in["CABLE Input (VB-Audio Virtual Cable)"]
             vb_out["CABLE Output (VB-Audio Virtual Cable)"]
 
-            vb_in e4@=="processed"==> vb_out
+            vb_in e2@=="processed"==> vb_out
         end
         subgraph StreamAllAudioThroughWifiApp
-
             Main@{ shape: subproc, label: "AppMain" }
             subgraph sample_and_stream
                 AudioSampler["AudioSampler"]
                 SpeakerRequestHandler["SpeakerRequestHandler"]
 
-                AudioSampler e5@=="write to"==> SpeakerRequestHandler
+                AudioSampler e2@=="write to"==> SpeakerRequestHandler
             end
             subgraph volume_controll
                 get_vol_fn["get_vol_fn()"]
@@ -126,23 +124,26 @@ flowchart TB
             Main o--"host"--o volume_controll
             Main =="trigger if connection fail"==> VpnUtil
             p_api_collection --> Main
-            %%SpeakerController
             app_config --> Main
         end
     end
     subgraph Speaker
-        controll_api["controll api"]
         request_maker["request maker"]
-    end
+        controll_api["controll api"]
+        Out@{ shape: dbl-circ, label: "Out" }
 
-    app1 e1@=="audio"==> sys_default_op
-    app2 e2@=="audio"==> sys_default_op
-    app3 e3@=="audio"==> sys_default_op
+        request_maker e3@=="audio"==> controll_api
+        controll_api e4@=="audio"==> Out
+    end
+    
+    app1 e5@=="audio"==> sys_default_op
+    app2 e6@=="audio"==> sys_default_op
+    app3 e7@=="audio"==> sys_default_op
     sys_default_op --volume--> get_vol_fn
     sys_default_op e8@=="mixed audio"==> vb_in
     vb_out e9@=="sample"==> AudioSampler
-    SpeakerRequestHandler e6@=="data"==> sys_network
-    sys_network e7@=="data"==> request_maker 
+    SpeakerRequestHandler e10@=="data"==> sys_network
+    sys_network e11@=="data"==> request_maker 
     SpeakerController <--"getVol\nsetVol\non/off"--> sys_network
     sys_network <--"getVol/setVol/on/off"--> controll_api
     VpnUtil ==> sys_network
