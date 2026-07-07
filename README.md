@@ -100,7 +100,7 @@ flowchart TB
             vb_in["CABLE Input (VB-Audio Virtual Cable)"]
             vb_out["CABLE Output (VB-Audio Virtual Cable)"]
 
-            vb_in e2@=="processed"==> vb_out
+            vb_in e1@=="processed"==> vb_out
         end
         subgraph StreamAllAudioThroughWifiApp
             Main@{ shape: subproc, label: "AppMain" }
@@ -110,7 +110,7 @@ flowchart TB
 
                 AudioSampler e2@=="write to"==> SpeakerRequestHandler
             end
-            subgraph volume_controll
+            subgraph volume_control
                 get_vol_fn["get_vol_fn()"]
                 SpeakerController["SpeakerController"]
 
@@ -120,8 +120,8 @@ flowchart TB
             p_api_collection@{ shape: docs, label: "postman_api_collection\n.json" }
             app_config@{ shape: docs, label: "app config\n.yaml" }
 
-            Main o--"host"--o sample_and_stream
-            Main o--"host"--o volume_controll
+            Main --"host"--o sample_and_stream
+            Main --"host"--o volume_control
             Main =="trigger if connection fail"==> VpnUtil
             p_api_collection --> Main
             app_config --> Main
@@ -129,11 +129,11 @@ flowchart TB
     end
     subgraph Speaker
         request_maker["request maker"]
-        controll_api["controll api"]
+        control_api["control api"]
         Out@{ shape: dbl-circ, label: "Out" }
 
-        request_maker e3@=="audio"==> controll_api
-        controll_api e4@=="audio"==> Out
+        request_maker e3@=="audio"==> control_api
+        control_api e4@=="audio"==> Out
     end
     
     app1 e5@=="audio"==> sys_default_op
@@ -145,7 +145,7 @@ flowchart TB
     SpeakerRequestHandler e10@=="data"==> sys_network
     sys_network e11@=="data"==> request_maker 
     SpeakerController <--"getVol\nsetVol\non/off"--> sys_network
-    sys_network <--"getVol/setVol/on/off"--> controll_api
+    sys_network <--"getVol/setVol/on/off"--> control_api
     VpnUtil ==> sys_network
 
     classDef animate stroke-dasharray: 9,5,stroke-dashoffset: 900,animation: dash 25s linear infinite;
