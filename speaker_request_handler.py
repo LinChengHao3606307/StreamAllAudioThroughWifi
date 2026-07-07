@@ -3,6 +3,7 @@ import struct
 from http.server import HTTPServer
 from http.server import BaseHTTPRequestHandler
 import socket
+import threading
 
 from logging_utils import get_logger
 
@@ -29,6 +30,11 @@ class SpeakerRequestHandler(BaseHTTPRequestHandler):
 
     # 全局运行控制标志
     is_running = True
+
+    init_lock = threading.Lock()
+    init_lock.acquire()
+    def __init__(self, request, client_address, server):
+        super().__init__(request, client_address, server)
 
     @classmethod
     def get_local_ip(cls):
@@ -81,12 +87,15 @@ class SpeakerRequestHandler(BaseHTTPRequestHandler):
     def set_config(cls, config: AppConfig):
         """类方法：全局设置配置，所有新连接的实例都会生效"""
         cls._VIRTUAL_AUDIO_DEVICE = cls.resolve_virtual_audio_device(config)
+        if not cls._VIRTUAL_AUDIO_DEVICE:
+            raise ValueError(f"配置里的设备不存在：{config.SAMPLING.SOURCE_REGEX}")
         cls._SAMPLE_RATE = config.SAMPLING.RATE
         cls._SAMPLE_WIDTH = config.SAMPLING.WIDTH
         cls._CHANNELS = config.SAMPLING.CHANNELS
         cls._FRAMES_PER_BUFFER = config.SAMPLING.FRAMES_PER_BUFFER
         cls._STREAM_PORT = config.STREAM.PORT
         cls._SAMPLER = AudioSampler(config=config)
+        cls.init_lock.release()
 
 
     def build_wav_header(self, stream_mode: bool = True):
@@ -132,6 +141,8 @@ class SpeakerRequestHandler(BaseHTTPRequestHandler):
         self.end_headers()
 
         try:
+            self.init_lock.acquire()
+            self.init_lock.release()
             # 获取虚拟录音设备
             mic = sc.get_microphone(self._VIRTUAL_AUDIO_DEVICE, include_loopback=True)
             frames_per_buffer = self._FRAMES_PER_BUFFER

@@ -17,11 +17,20 @@ from logging_utils import setup_logging, get_logger, get_colored
 class StreamAllAudioThroughWifiApp:
 
     def __init__(self, config_path):
-        self.config = AppConfig(yaml_path=config_path)
-        self.vpn_util = VpnUtil(config=self.config)
-        self.speaker_controller = SpeakerController(config=self.config)
-        SpeakerRequestHandler.set_config(config=self.config)
-        
+
+        try:
+            self.config = AppConfig(yaml_path=config_path)
+            self.vpn_util = VpnUtil(config=self.config)
+            self.speaker_controller = SpeakerController(config=self.config)
+            self._logger = get_logger(self.config.LOGGING.LOGGER_NAME)
+            setup_logging(self.config.LOGGING.LEVEL)
+            SpeakerRequestHandler.set_config(config=self.config)
+        except Exception as e:
+            self._logger.exception(
+                get_colored("初始化失败：%s", self.config.LOGGING.COLORS.ERROR),
+                e
+            )
+            sys.exit(1)
 
         self.on_step = 0
         self.total_steps = 6
@@ -34,8 +43,7 @@ class StreamAllAudioThroughWifiApp:
         self._http_server = None
         self._target_device = None
         self._volume = -1
-        self._logger = get_logger(self.config.LOGGING.LOGGER_NAME)
-        setup_logging(self.config.LOGGING.LEVEL)
+
 
 
     @property
@@ -265,5 +273,5 @@ class StreamAllAudioThroughWifiApp:
         
 
 if __name__ == "__main__":
-    wifi_music_handler = StreamAllAudioThroughWifiApp("./configs/kef-lsx ii.yaml")
+    wifi_music_handler = StreamAllAudioThroughWifiApp("./configs/remote_desktop kef.yaml")
     wifi_music_handler.run()

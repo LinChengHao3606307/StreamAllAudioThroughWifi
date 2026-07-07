@@ -1,0 +1,70 @@
+# ================= 声音采集配置 =================
+SAMPLING:
+  RATE: 96000 
+  WIDTH : 3
+  CHANNELS: 2
+  FRAMES_PER_BUFFER: 2048
+  REQUIRED_SYSTEM_OUTPUT: Remote Audio
+  SOURCE_REGEX: ^Remote Audio$
+
+STREAM:
+  PORT: 8000
+# ================= 音箱配置 =================
+SPEAKER:
+  NAME_REGEX: LSX
+  COMMAND:
+    POSTMAN_COLLECTION: "./speaker_api/KEF-LSX II.postman_collection.json"
+    EXECUTION_INTERVAL: 1 #程序执行间隔，单位：秒
+    POWER:
+      ON: #此指令不会理会任何输入，也不会解析回复 （示例配置: [CMD1:开机] -> [CMD2:切换到 wifi 音源] )
+        CMD1: 
+          NAME: "set source to wifi"
+          PARAMS: [] # postman 的 {{ }} 变量
+          RESPONSE: [] # json
+        # CMD2: ... (按顺序执行)
+      OFF: #此指令不会理会任何输入，也不会解析回复
+        CMD1:
+          NAME: "set speaker to standby"
+          PARAMS: [] # postman 的 {{ }} 变量
+          RESPONSE: [] # json
+        # CMD2: ... (按顺序执行) 
+    VOLUME:
+      GET: #只能有一个路径指向一个0-100的数字回复，程序不会输入任何信息
+        CMD1: 
+          NAME: "get volume"
+          PARAMS: [] # postman 的 {{ }} 变量
+          RESPONSE: ["0.'i32_'"] # json
+        # CMD2: ... (按顺序执行) 
+      SET: #只能有一个命令接受一个0-100的数字输入，程序不会解析任何返回的信息
+        CMD1: 
+          NAME: "set volume"
+          PARAMS: ['volumeVal'] # postman 的 {{ }} 变量
+          RESPONSE: [] # json
+        # CMD2: ... (按顺序执行) 
+
+# ================= 程序配置 =================
+PROGRAM_CONSTANT:
+  HTTP_SERVER_BOOTING_TIME: 2 #http服务器启动生效的时间，单位：秒
+  MAIN_LOOP_INTERVAL: 1000 #主循环间隔，单位：ms
+
+# ================= 日志配置 =================
+LOGGING:
+  LOGGER_NAME: stream_all_audio
+  LEVEL: INFO
+  COLORS:
+    ERROR: "#d83659"
+    WARNING: "#E49C3E"
+    RESTART: "#d8cd36"
+    KEY_STEP: "#46cf8f"
+    VPN_OPERATION: "#7e2ce9"
+    OUTPUT_DEVICE_HIGHLIGHT: "#e92cba"
+
+# ================= VPN 配置 =================
+VPN:
+  TOGGLE_IF_FAILED: true         # 设为 true 启用 任意环节失败时临时关闭VPN重试 功能
+  COMMAND:
+    DOWN: '"C:\Program Files\Tailscale\tailscale.exe" set --exit-node=""' # VPN 关闭命令
+    UP: '"C:\Program Files\Tailscale\tailscale.exe" set --exit-node="hong-kong-forwarding-node"' # VPN 恢复命令
+    DELAY: 5 #执行前延迟的时间，单位：秒
+    WAITING_TIME: 5 #执行后等待生效的时间，单位：秒
+    
