@@ -1,5 +1,73 @@
 # StreamAllAudioThroughWifi
 
+```mermaid
+
+flowchart TB
+    subgraph PC
+        app1@{ shape: circle, label: "app 1" }
+        app2@{ shape: circle, label: "app 2" }
+        app3@{ shape: circle, label: "app 3" }
+        subgraph OS
+            sys_default_op@{ shape: notch-rect, label: "system default output" }
+            sys_network@{ shape: notch-rect, label: "system network" }
+        end
+        subgraph vb_cable
+            vb_in["CABLE Input (VB-Audio Virtual Cable)"]
+            vb_out["CABLE Output (VB-Audio Virtual Cable)"]
+
+            vb_in e1@=="processed"==> vb_out
+        end
+        subgraph StreamAllAudioThroughWifiApp
+            Main@{ shape: subproc, label: "AppMain" }
+            subgraph sample_and_stream
+                AudioSampler["AudioSampler"]
+                SpeakerRequestHandler["SpeakerRequestHandler"]
+
+                AudioSampler e2@=="write to"==> SpeakerRequestHandler
+            end
+            subgraph volume_control
+                get_vol_fn["get_vol_fn()"]
+                SpeakerController["SpeakerController"]
+
+                get_vol_fn --> SpeakerController
+            end
+            VpnUtil["VpnUtil"]
+            p_api_collection@{ shape: docs, label: "postman_api_collection\n.json" }
+            app_config@{ shape: docs, label: "app config\n.yaml" }
+
+            Main --"host"--o sample_and_stream
+            Main --"host"--o volume_control
+            Main =="trigger if connection fail"==> VpnUtil
+            p_api_collection --> Main
+            app_config --> Main
+        end
+    end
+    subgraph Speaker
+        request_maker["request maker"]
+        control_api["control api"]
+        Out@{ shape: dbl-circ, label: "Out" }
+
+        request_maker e3@=="audio"==> control_api
+        control_api e4@=="audio"==> Out
+    end
+    
+    app1 e5@=="audio"==> sys_default_op
+    app2 e6@=="audio"==> sys_default_op
+    app3 e7@=="audio"==> sys_default_op
+    sys_default_op --volume--> get_vol_fn
+    sys_default_op e8@=="mixed audio"==> vb_in
+    vb_out e9@=="sample"==> AudioSampler
+    SpeakerRequestHandler e10@=="data"==> sys_network
+    sys_network e11@=="data"==> request_maker 
+    SpeakerController <--"getVol\nsetVol\non/off"--> sys_network
+    sys_network <--"getVol/setVol/on/off"--> control_api
+    VpnUtil ==> sys_network
+
+    classDef animate stroke-dasharray: 9,5,stroke-dashoffset: 900,animation: dash 25s linear infinite;
+    class e1,e2,e3,e4,e5,e6,e7,e8,e9,e10,e11 animate
+
+```
+
 ## Overview
 
 `StreamAllAudioThroughWifi` is a Windows-only helper for streaming PC audio through a DLNA/UPnP speaker over WiFi.
@@ -84,74 +152,6 @@ The main workflow is:
 4. Select the matched speaker
 5. Use the speaker's Postman API collection to power on the device and control volume
 6. Continuously read Windows master volume and push updates to the speaker
-
-```mermaid
-
-flowchart TB
-    subgraph PC
-        app1@{ shape: circle, label: "app 1" }
-        app2@{ shape: circle, label: "app 2" }
-        app3@{ shape: circle, label: "app 3" }
-        subgraph OS
-            sys_default_op@{ shape: notch-rect, label: "system default output" }
-            sys_network@{ shape: notch-rect, label: "system network" }
-        end
-        subgraph vb_cable
-            vb_in["CABLE Input (VB-Audio Virtual Cable)"]
-            vb_out["CABLE Output (VB-Audio Virtual Cable)"]
-
-            vb_in e1@=="processed"==> vb_out
-        end
-        subgraph StreamAllAudioThroughWifiApp
-            Main@{ shape: subproc, label: "AppMain" }
-            subgraph sample_and_stream
-                AudioSampler["AudioSampler"]
-                SpeakerRequestHandler["SpeakerRequestHandler"]
-
-                AudioSampler e2@=="write to"==> SpeakerRequestHandler
-            end
-            subgraph volume_control
-                get_vol_fn["get_vol_fn()"]
-                SpeakerController["SpeakerController"]
-
-                get_vol_fn --> SpeakerController
-            end
-            VpnUtil["VpnUtil"]
-            p_api_collection@{ shape: docs, label: "postman_api_collection\n.json" }
-            app_config@{ shape: docs, label: "app config\n.yaml" }
-
-            Main --"host"--o sample_and_stream
-            Main --"host"--o volume_control
-            Main =="trigger if connection fail"==> VpnUtil
-            p_api_collection --> Main
-            app_config --> Main
-        end
-    end
-    subgraph Speaker
-        request_maker["request maker"]
-        control_api["control api"]
-        Out@{ shape: dbl-circ, label: "Out" }
-
-        request_maker e3@=="audio"==> control_api
-        control_api e4@=="audio"==> Out
-    end
-    
-    app1 e5@=="audio"==> sys_default_op
-    app2 e6@=="audio"==> sys_default_op
-    app3 e7@=="audio"==> sys_default_op
-    sys_default_op --volume--> get_vol_fn
-    sys_default_op e8@=="mixed audio"==> vb_in
-    vb_out e9@=="sample"==> AudioSampler
-    SpeakerRequestHandler e10@=="data"==> sys_network
-    sys_network e11@=="data"==> request_maker 
-    SpeakerController <--"getVol\nsetVol\non/off"--> sys_network
-    sys_network <--"getVol/setVol/on/off"--> control_api
-    VpnUtil ==> sys_network
-
-    classDef animate stroke-dasharray: 9,5,stroke-dashoffset: 900,animation: dash 25s linear infinite;
-    class e1,e2,e3,e4,e5,e6,e7,e8,e9,e10,e11 animate
-
-```
 
 ### Important components
 
